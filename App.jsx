@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { KnightDoodle, DragonDoodle, CatDoodle, ProgressBar } from './components/DoodleIllustrations.jsx';
-import { submitUserData, exportDemoData } from './src/utils/googleSheets.js';
+import { submitUserData, exportSignupsCSV, getAllSignups, clearAllSignups } from './src/utils/emailSignups.js';
 import './App.css';
 
 function App() {
@@ -9,6 +9,7 @@ function App() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [signupCount, setSignupCount] = useState(0);
 
   const handleStartClick = () => {
     setShowForm(true);
@@ -24,25 +25,23 @@ function App() {
     setIsSubmitting(true);
 
     try {
-      // Submit to Google Sheets
+      // Submit via email
       const result = await submitUserData(formData);
       
       if (result.success) {
-        console.log('Form Data Submitted to Google Sheets:', formData);
+        console.log('Form Data Submitted via Email:', formData);
         setFormSubmitted(true);
+        
+        // Update signup count
+        const { data } = getAllSignups();
+        setSignupCount(data.length);
         
         // Reset form after success
         setTimeout(() => {
           setFormData({ name: '', email: '' });
-        }, 2000);
+        }, 3000);
       } else {
-        // Handle offline/error case
-        if (result.fallbackData) {
-          setFormSubmitted(true);
-          console.log('Data saved locally:', result.fallbackData);
-        } else {
-          throw new Error(result.error);
-        }
+        throw new Error(result.error);
       }
       
     } catch (error) {
@@ -53,21 +52,47 @@ function App() {
     }
   };
 
-  const handleExportDemo = () => {
+  const handleExportSignups = () => {
     try {
-      const fileName = exportDemoData();
-      alert(`Demo data exported as CSV: ${fileName}`);
+      const fileName = exportSignupsCSV();
+      if (fileName) {
+        alert(`Signups exported to: ${fileName}`);
+      } else {
+        alert('No signups to export yet!');
+      }
     } catch (error) {
       console.error('Export error:', error);
       alert('Error exporting data');
     }
   };
 
-  const openGoogleSheet = () => {
-    const sheetId = 'your-google-sheet-id-here'; // User will replace this
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
-    window.open(url, '_blank');
+  const handleViewSignups = () => {
+    const { data: signups } = getAllSignups();
+    if (signups.length === 0) {
+      alert('No signups yet! Submit the form to test it.');
+      return;
+    }
+    
+    const signupList = signups.map(s => 
+      `${s.name} (${s.email}) - ${s.timestamp}`
+    ).join('\n');
+    
+    alert(`Current Signups (${signups.length}):\n\n${signupList}`);
   };
+
+  const handleClearSignups = () => {
+    if (window.confirm('Clear all stored signups? This cannot be undone.')) {
+      clearAllSignups();
+      setSignupCount(0);
+      alert('All signups cleared!');
+    }
+  };
+
+  // Get current signup count on component mount
+  React.useEffect(() => {
+    const { data } = getAllSignups();
+    setSignupCount(data.length);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -78,6 +103,7 @@ function App() {
           <button onClick={() => setShowForm(false)} className="hover:underline">Home</button>
           <button onClick={() => setShowAdmin(!showAdmin)} className="hover:underline">
             {showAdmin ? 'Hide Admin' : 'Admin'}
+            {signupCount > 0 && <span className="ml-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">{signupCount}</span>}
           </button>
         </nav>
       </header>
@@ -189,8 +215,11 @@ function App() {
             ) : (
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-4">🎉 Thanks for joining!</h2>
-                <p className="text-lg">We'll give you a shout once we finish loading!</p>
-                <p className="text-sm text-gray-600 mt-4">Your data has been saved securely.</p>
+                <p className="text-lg mb-2">We'll give you a shout once we finish loading!</p>
+                <p className="text-sm text-gray-600 mt-4">
+                  ✅ Your signup was saved locally<br/>
+                  📧 Email notification sent to admin
+                </p>
               </div>
             )}
           </div>
@@ -198,41 +227,46 @@ function App() {
 
         {/* Admin Panel */}
         {showAdmin && (
-          <div className="admin-panel mt-8 p-6 border-2 border-black rounded-lg bg-green-50 max-w-lg mx-auto">
-            <h3 className="text-xl font-bold mb-4">📊 Google Sheets Admin</h3>
-            <p className="text-sm text-gray-600 mb-4">Manage your signup data with Google Sheets</p>
+          <div className="admin-panel mt-8 p-6 border-2 border-black rounded-lg bg-blue-50 max-w-lg mx-auto">
+            <h3 className="text-xl font-bold mb-4">📧 Email Admin Panel</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Simple email-based signup collection - no setup required!
+            </p>
             
             <div className="space-y-3">
               <button 
-                onClick={openGoogleSheet}
-                className="w-full bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-700 transition"
-              >
-                📊 Open Google Sheet (Live Data)
-              </button>
-              
-              <button 
-                onClick={handleExportDemo}
+                onClick={handleViewSignups}
                 className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition"
               >
-                📥 Export Demo CSV
+                📋 View Signups ({signupCount})
               </button>
               
               <button 
-                onClick={() => alert('Quick Setup:\n\n1. Create Google Sheet with headers: Name, Email, Signup Date\n2. Extensions → Apps Script\n3. Paste the code from GOOGLE_SETUP.md\n4. Deploy as Web App\n5. Update googleSheets.js with your URL\n\n✅ Takes 5 minutes!\n✅ Data appears instantly!\n✅ Never goes down!')}
-                className="w-full bg-yellow-600 text-white font-bold py-2 px-4 rounded hover:bg-yellow-700 transition"
+                onClick={handleExportSignups}
+                className="w-full bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-700 transition"
               >
-                ⚙️ Quick Setup Guide
+                📥 Export to CSV
+              </button>
+              
+              <button 
+                onClick={handleClearSignups}
+                className="w-full bg-red-600 text-white font-bold py-2 px-4 rounded hover:bg-red-700 transition"
+              >
+                🗑️ Clear All Data
               </button>
               
               <div className="text-xs text-gray-600 mt-4 p-3 bg-white rounded border">
-                <p><strong>✅ Why Google Sheets:</strong></p>
+                <p><strong>📧 How it works:</strong></p>
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>Never goes down (unlike free databases)</li>
-                  <li>Data appears instantly in spreadsheet</li>
-                  <li>Easy to export, filter, analyze</li>
-                  <li>Works with your Google subscription</li>
-                  <li>No monthly limits or downtime</li>
+                  <li>Form submission opens email with signup details</li>
+                  <li>Data stored locally as backup</li>
+                  <li>Export to CSV anytime</li>
+                  <li>Zero setup required!</li>
+                  <li>Works immediately</li>
                 </ul>
+                <p className="mt-2 text-orange-600">
+                  <strong>⚙️ To receive emails:</strong> Update your email in emailSignups.js
+                </p>
               </div>
             </div>
           </div>
