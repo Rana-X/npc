@@ -138,6 +138,17 @@
   background: #333;
 }
 
+.submit-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.submit-button:disabled:hover {
+  background: #ccc;
+  transform: none;
+}
+
 nav {
   display: flex;
   gap: 1.5rem;

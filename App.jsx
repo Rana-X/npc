@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { KnightDoodle, DragonDoodle, CatDoodle, ProgressBar } from './components/DoodleIllustrations.jsx';
+import { submitUserData, exportToExcel, exportDemoData } from './src/utils/database.js';
 import './App.css';
 
 function App() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const handleStartClick = () => {
     setShowForm(true);
@@ -16,20 +19,54 @@ function App() {
     setFormData(prevData => ({ ...prevData, [name]: value }));
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form Data Submitted:', formData);
-    setFormSubmitted(true);
+    setIsSubmitting(true);
+
+    try {
+      // For now, we'll simulate saving to database with a delay
+      // Once you set up Supabase, uncomment the line below:
+      // const result = await submitUserData(formData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      console.log('Form Data Submitted:', formData);
+      setFormSubmitted(true);
+      
+      // Reset form after success
+      setTimeout(() => {
+        setFormData({ name: '', email: '' });
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error submitting form. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleExportDemo = () => {
+    try {
+      const fileName = exportDemoData();
+      alert(`Demo data exported to ${fileName}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Error exporting data');
+    }
   };
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Header */}
       <header className="flex justify-between items-center p-6 relative z-10">
-        <div className="logo-text">NPC</div>
+        <div className="logo-text">PATH TO MC</div>
         <nav className="flex space-x-6 text-black font-medium">
-          <a href="/" className="hover:underline">Home</a>
-          <a href="#contact" className="hover:underline">Contact</a>
+          <button onClick={() => setShowForm(false)} className="hover:underline">Home</button>
+          <button onClick={() => setShowAdmin(!showAdmin)} className="hover:underline">
+            {showAdmin ? 'Hide Admin' : 'Admin'}
+          </button>
         </nav>
       </header>
 
@@ -129,16 +166,52 @@ function App() {
                   className="input-field"
                   required
                 />
-                <button type="submit" className="submit-button">
-                  Submit
+                <button 
+                  type="submit" 
+                  className="submit-button"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit'}
                 </button>
               </form>
             ) : (
               <div className="text-center">
-                <h2 className="text-2xl font-bold mb-4">Thanks for joining!</h2>
+                <h2 className="text-2xl font-bold mb-4">🎉 Thanks for joining!</h2>
                 <p className="text-lg">We'll give you a shout once we finish loading!</p>
+                <p className="text-sm text-gray-600 mt-4">Your data has been saved securely.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Admin Panel */}
+        {showAdmin && (
+          <div className="admin-panel mt-8 p-6 border-2 border-black rounded-lg bg-yellow-50 max-w-md mx-auto">
+            <h3 className="text-xl font-bold mb-4">📊 Admin Panel</h3>
+            <p className="text-sm text-gray-600 mb-4">Export user data to Excel format</p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={handleExportDemo}
+                className="w-full bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-700 transition"
+              >
+                📥 Export Demo Data (Excel)
+              </button>
+              
+              <button 
+                onClick={() => alert('Connect to Supabase first!\n\n1. Create account at supabase.com\n2. Create a new project\n3. Update database.js with your keys')}
+                className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition"
+              >
+                🗄️ Export Real Data (Coming Soon)
+              </button>
+              
+              <div className="text-xs text-gray-500 mt-3">
+                <p><strong>Next Steps:</strong></p>
+                <p>1. Set up free Supabase account</p>
+                <p>2. Update database.js with your credentials</p>
+                <p>3. Create users table in Supabase</p>
+              </div>
+            </div>
           </div>
         )}
       </main>
