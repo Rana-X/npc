@@ -84,5 +84,4 @@ export const ProgressBar = ({ progress = 50, className = "" }) => {
       ))}
     </div>
   );
-};
-
+}; 
