@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { KnightDoodle, DragonDoodle, CatDoodle, ProgressBar } from './components/DoodleIllustrations.jsx';
-import { submitUserData, exportToExcel, exportDemoData } from './src/utils/database.js';
+import { submitUserData, exportDemoData } from './src/utils/googleSheets.js';
 import './App.css';
 
 function App() {
@@ -24,20 +24,26 @@ function App() {
     setIsSubmitting(true);
 
     try {
-      // For now, we'll simulate saving to database with a delay
-      // Once you set up Supabase, uncomment the line below:
-      // const result = await submitUserData(formData);
+      // Submit to Google Sheets
+      const result = await submitUserData(formData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log('Form Data Submitted:', formData);
-      setFormSubmitted(true);
-      
-      // Reset form after success
-      setTimeout(() => {
-        setFormData({ name: '', email: '' });
-      }, 2000);
+      if (result.success) {
+        console.log('Form Data Submitted to Google Sheets:', formData);
+        setFormSubmitted(true);
+        
+        // Reset form after success
+        setTimeout(() => {
+          setFormData({ name: '', email: '' });
+        }, 2000);
+      } else {
+        // Handle offline/error case
+        if (result.fallbackData) {
+          setFormSubmitted(true);
+          console.log('Data saved locally:', result.fallbackData);
+        } else {
+          throw new Error(result.error);
+        }
+      }
       
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -50,11 +56,17 @@ function App() {
   const handleExportDemo = () => {
     try {
       const fileName = exportDemoData();
-      alert(`Demo data exported to ${fileName}`);
+      alert(`Demo data exported as CSV: ${fileName}`);
     } catch (error) {
       console.error('Export error:', error);
       alert('Error exporting data');
     }
+  };
+
+  const openGoogleSheet = () => {
+    const sheetId = 'your-google-sheet-id-here'; // User will replace this
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -186,30 +198,41 @@ function App() {
 
         {/* Admin Panel */}
         {showAdmin && (
-          <div className="admin-panel mt-8 p-6 border-2 border-black rounded-lg bg-yellow-50 max-w-md mx-auto">
-            <h3 className="text-xl font-bold mb-4">📊 Admin Panel</h3>
-            <p className="text-sm text-gray-600 mb-4">Export user data to Excel format</p>
+          <div className="admin-panel mt-8 p-6 border-2 border-black rounded-lg bg-green-50 max-w-lg mx-auto">
+            <h3 className="text-xl font-bold mb-4">📊 Google Sheets Admin</h3>
+            <p className="text-sm text-gray-600 mb-4">Manage your signup data with Google Sheets</p>
             
             <div className="space-y-3">
               <button 
-                onClick={handleExportDemo}
+                onClick={openGoogleSheet}
                 className="w-full bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-700 transition"
               >
-                📥 Export Demo Data (Excel)
+                📊 Open Google Sheet (Live Data)
               </button>
               
               <button 
-                onClick={() => alert('Connect to Supabase first!\n\n1. Create account at supabase.com\n2. Create a new project\n3. Update database.js with your keys')}
+                onClick={handleExportDemo}
                 className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition"
               >
-                🗄️ Export Real Data (Coming Soon)
+                📥 Export Demo CSV
               </button>
               
-              <div className="text-xs text-gray-500 mt-3">
-                <p><strong>Next Steps:</strong></p>
-                <p>1. Set up free Supabase account</p>
-                <p>2. Update database.js with your credentials</p>
-                <p>3. Create users table in Supabase</p>
+              <button 
+                onClick={() => alert('Quick Setup:\n\n1. Create Google Sheet with headers: Name, Email, Signup Date\n2. Extensions → Apps Script\n3. Paste the code from GOOGLE_SETUP.md\n4. Deploy as Web App\n5. Update googleSheets.js with your URL\n\n✅ Takes 5 minutes!\n✅ Data appears instantly!\n✅ Never goes down!')}
+                className="w-full bg-yellow-600 text-white font-bold py-2 px-4 rounded hover:bg-yellow-700 transition"
+              >
+                ⚙️ Quick Setup Guide
+              </button>
+              
+              <div className="text-xs text-gray-600 mt-4 p-3 bg-white rounded border">
+                <p><strong>✅ Why Google Sheets:</strong></p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Never goes down (unlike free databases)</li>
+                  <li>Data appears instantly in spreadsheet</li>
+                  <li>Easy to export, filter, analyze</li>
+                  <li>Works with your Google subscription</li>
+                  <li>No monthly limits or downtime</li>
+                </ul>
               </div>
             </div>
           </div>
